@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOCTIS — Sistema de gestão para academias</title>
+<meta name="description" content="NOCTIS · MVP de gestão para academias: matrícula, check-in validado, financeiro e módulo nutricional.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238b5cf6'/%3E%3Crect x='9' y='9' width='14' height='14' rx='3' fill='%2308080c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Anton&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=1.1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+<!-- Fundo 3D (Three.js): halter em wireframe + partículas, só nas telas de entrada -->
+<canvas id="bg3d"></canvas>
+
+<!-- INTRO: o nome entra em cena e abre para o painel (1x por sessão) -->
+<div id="intro" class="intro">
+  <div class="intro-inner">
+    <svg class="intro-bell" viewBox="0 0 200 80" fill="none" stroke="#a78bfa" stroke-width="4" stroke-linecap="round">
+      <line x1="14" y1="40" x2="186" y2="40" pathLength="100"/>
+      <rect x="42" y="14" width="15" height="52" rx="4" pathLength="100"/>
+      <rect x="61" y="22" width="12" height="36" rx="3" pathLength="100"/>
+      <rect x="127" y="22" width="12" height="36" rx="3" pathLength="100"/>
+      <rect x="143" y="14" width="15" height="52" rx="4" pathLength="100"/>
+    </svg>
+    <div class="intro-logo"><span class="mark"></span><span class="word"><i>N</i><i>O</i><i>C</i><i>T</i><i>I</i><i>S</i></span></div>
+    <p class="intro-tag">Gestão da academia, sem caderno.</p>
+    <span class="intro-line"></span>
+  </div>
+</div>
+
+<!-- TELA 1 · LOGIN -->
+<div id="login-screen" class="login-screen">
+  <div class="login-grid">
+    <div class="login-brand">
+      <div class="brandmark"><span class="mark"></span>NOCTIS</div>
+      <h1>Gestão da academia,<br>sem caderno.</h1>
+      <ul class="brand-points">
+        <li><span>01</span>Matrícula completa do aluno</li>
+        <li><span>02</span>Check-in com validação de pagamento</li>
+        <li><span>03</span>Financeiro e dashboard em tempo real</li>
+      </ul>
+      <div class="brand-foot">v1.1 · HTML + CSS + JS · GitHub Pages</div>
+    </div>
+    <div class="login-form">
+      <h2>Acesso ao painel</h2>
+      <p class="sub">Autenticação por perfil — toque numa conta para entrar.</p>
+      <label>E-mail<input id="login-email" value="admin@noctis" autocomplete="username"></label>
+      <label>Senha<input id="login-senha" type="password" value="admin123" autocomplete="current-password"></label>
+      <div id="login-verify" class="verify-widget sm" onclick="tocarVerify()" title="Confirmar que sou humano">
+        <span id="verify-check" class="verify-check"></span>
+        <span id="verify-label">Sou humano</span>
+        <span id="verify-spinner" class="verify-spinner hidden"></span>
+      </div>
+      <button class="btn btn-block" onclick="fazerLogin()">Entrar no painel</button>
+      <p id="login-erro" class="erro"></p>
+      <div class="demo">
+        <strong>Acesso rápido</strong>
+        <div onclick="preencherLogin('admin@noctis','admin123')"><code>admin@noctis / admin123</code><span>Administrador — acesso total</span></div>
+        <div onclick="preencherLogin('recepcao@noctis','recepcao123')"><code>recepcao@noctis / recepcao123</code><span>Atendimento — matrícula, check-in, financeiro</span></div>
+        <div onclick="preencherLogin('aluno@noctis','aluno123')"><code>aluno@noctis / aluno123</code><span>Aluno — treinos, exames, desafios, fórum</span></div>
+        <div onclick="preencherLogin('nutri@noctis','nutri123')"><code>nutri@noctis / nutri123</code><span>Nutricionista — anamnese, plano alimentar, exames</span></div>
+        <div onclick="preencherLogin('personal@noctis','personal123')"><code>personal@noctis / personal123</code><span>Personal — treinos e acompanhamento</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+<aside class="sidebar">
+  <div class="brandmark sm"><span class="mark"></span>NOCTIS <small>v1.1</small></div>
+  <div class="userbox"><span class="avatar sm" id="user-avatar">N</span><div style="flex:1;min-width:0"><strong id="user-nome"></strong><small id="user-perfil"></small></div><button class="mini-logout" onclick="sair()" title="Encerrar sessão">Sair</button></div>
+  <nav id="nav" aria-label="Navegação principal">
+    <div class="nav-sec">Operação</div>
+    <button class="nav-btn active" data-route="dashboard" data-perfis="Administrador,Funcionário,Nutricionista,Personal"><span class="num">00</span>Dashboard</button>
+    <button class="nav-btn" data-route="matricula" data-perfis="Administrador,Funcionário"><span class="num">01</span>Matrícula</button>
+    <button class="nav-btn" data-route="checkin" data-perfis="Administrador,Funcionário"><span class="num">02</span>Check-in</button>
+    <button class="nav-btn" data-route="financeiro" data-perfis="Administrador,Funcionário"><span class="num">03</span>Financeiro</button>
+    <div class="nav-sec">Nutrição</div>
+    <button class="nav-btn" data-route="anamnese" data-perfis="Administrador,Funcionário,Nutricionista"><span class="num">04</span>Anamnese</button>
+    <button class="nav-btn" data-route="plano" data-perfis="Administrador,Funcionário,Nutricionista,Aluno"><span class="num">05</span>Plano alimentar</button>
+    <button class="nav-btn" data-route="exames" data-perfis="Administrador,Nutricionista,Funcionário,Aluno"><span class="num">08</span>Exames</button>
+    <div class="nav-sec">Treino</div>
+    <button class="nav-btn" data-route="dashaluno" data-perfis="Administrador,Funcionário,Aluno,Nutricionista,Personal"><span class="num">06</span>Dashboard do aluno</button>
+    <button class="nav-btn" data-route="treinos" data-perfis="Administrador,Personal,Funcionário,Aluno"><span class="num">07</span>Treinos</button>
+    <div class="nav-sec">Comunidade</div>
+    <button class="nav-btn" data-route="desafios" data-perfis="Administrador,Funcionário,Aluno,Nutricionista,Personal"><span class="num">09</span>Desafios</button>
+    <button class="nav-btn" data-route="forum" data-perfis="Administrador,Funcionário,Aluno,Nutricionista,Personal"><span class="num">10</span>Fórum</button>
+  </nav>
+  <button class="kbd-hint" onclick="abrirCmdk()" title="Busca rápida"><span class="kbd">Ctrl K</span> Buscar telas e ações</button>
+</aside>
+
+<main class="content">
+
+  <section id="view-dashboard" class="view active">
+    <div class="page-head">
+      <div><h1>Dashboard</h1><p class="sub">Operação de hoje — <span id="hoje"></span> · <span id="dash-turno" class="mono"></span></p></div>
+      <div class="head-meta"><span class="live-dot"></span>NOCTIS / TEMPO REAL</div>
+    </div>
+    <div class="dash-grid">
+      <p id="dash-fin-note" class="fin-note muted" style="display:none">Visão operacional — valores financeiros visíveis só para administração e recepção.</p>
+      <div class="panel dash-hero" id="dash-hero">
+        <div class="tele">RECEITA · MÊS <span id="kpi-receita-delta" class="delta up"></span></div>
+        <div class="dash-big anton"><span id="kpi-receita">R$ 0</span></div>
+        <div class="meta-row"><div class="meta-track"><div id="meta-bar-fill" class="meta-fill"></div></div><small id="meta-txt" class="muted mono"></small></div>
+        <div class="dash-split">
+          <div><span class="tele">A RECEBER</span><strong id="kpi-pendente" class="mono">R$ 0</strong></div>
+          <div><span class="tele">TICKET MÉDIO</span><strong id="kpi-ticket" class="mono">R$ 0</strong></div>
+          <div><span class="tele">INADIMPLENTES</span><strong id="kpi-inad" class="mono danger">0</strong></div>
+        </div>
+        <div class="chart-box sm"><canvas id="chart-spark"></canvas></div>
+      </div>
+      <div class="panel dash-hoje">
+        <div class="tele">HOJE · OCUPAÇÃO</div>
+        <div class="dash-big anton"><span id="kpi-checkins">0</span><small class="dash-unit">check-ins</small></div>
+        <div class="oc-track"><div id="ocup-bar-fill" class="ocup-fill"></div></div>
+        <small id="ocup-txt" class="muted mono"></small>
+        <hr class="dash-hr">
+        <div class="dash-split">
+          <div><span class="tele">ALUNOS</span><strong id="kpi-alunos" class="mono">0</strong><small id="kpi-ativos" class="muted"></small></div>
+          <div><span class="tele">PICO</span><strong id="pico-hora" class="mono">—</strong><small class="muted">horário</small></div>
+        </div>
+        <div class="dash-actions">
+          <button class="btn small" onclick="irPara('matricula')">Nova matrícula</button>
+          <button class="btn small ghost" onclick="irPara('checkin')">Check-in</button>
+        </div>
+      </div>
+      <div class="panel dash-planos">
+        <div class="tele">BASE · POR PLANO</div>
+        <div class="chart-box"><canvas id="chart-planos"></canvas></div>
+        <div id="planos-legend" class="legend"></div>
+      </div>
+      <div class="panel dash-fluxo">
+        <div class="dash-flex-between"><span class="tele">FLUXO · 7 DIAS</span><small class="mono muted"><span id="checkins-7d">0</span> total · média <span id="checkins-media">0</span>/dia</small></div>
+        <div class="chart-box"><canvas id="chart-checkins"></canvas><div id="fluxo-vazio" class="chart-empty hidden">Sem movimento nos últimos 7 dias.<br>Registre check-ins na catraca.</div></div>
+      </div>
+      <div class="panel dash-alerts" id="dash-alerts">
+        <div class="tele">ATENÇÃO · COBRANÇA</div>
+        <div id="dash-inadimplentes" class="feed"></div>
+        <button class="btn small ghost" onclick="irPara('financeiro')">Abrir financeiro</button>
+      </div>
+      <div class="panel dash-live">
+        <div class="tele">AO VIVO · ÚLTIMOS ACESSOS</div>
+        <div id="dash-atividade" class="feed"></div>
+      </div>
+      <div class="panel dash-rank">
+        <div class="dash-flex-between"><span class="tele">RANKING · MAIS FREQUENTES</span><small class="mono muted">presenças totais</small></div>
+        <div id="dash-ranking"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-matricula" class="view">
+    <div class="page-head">
+      <div><h1>Matrícula</h1><p class="sub">Cadastro completo do aluno</p></div>
+    </div>
+    <div class="toolbar">
+      <input id="busca-aluno" type="search" placeholder="Buscar por nome...">
+      <select id="filtro-plano"><option value="">Todos os planos</option><option>Mensal</option><option>Trimestral</option><option>Anual</option></select>
+      <select id="filtro-status"><option value="">Todos os status</option><option>Ativo</option><option>Inativo</option></select>
+      <button class="btn" onclick="abrirModalAluno()">Nova matrícula</button>
+      <button class="btn ghost" onclick="exportarAlunosCSV()">Exportar CSV</button>
+    </div>
+    <div class="panel nopad"><table>
+      <thead><tr><th>Aluno</th><th>Plano</th><th>Status</th><th>Mensalidade</th><th>Ações</th></tr></thead>
+      <tbody id="tb-alunos"></tbody>
+    </table></div>
+  </section>
+
+  <section id="view-checkin" class="view">
+    <div class="page-head">
+      <div><h1>Check-in</h1><p class="sub">Catraca: validação de pagamento + acesso</p></div>
+      <div class="head-meta"><span class="live-dot"></span>CATRACA ABERTA</div>
+    </div>
+    <div class="panel check-hero">
+      <div class="tele">LIBERAR ACESSO · SÓ ENTRA ATIVO + MENSALIDADE PAGA</div>
+      <div class="check-row">
+        <select id="checkin-aluno" class="check-select"></select>
+        <button class="btn btn-check" onclick="fazerCheckin()">Liberar acesso</button>
+      </div>
+      <p id="checkin-msg" class="aviso"></p>
+      <div class="check-foot"><span class="dash-big anton"><span id="checkin-hoje-total">0</span><small class="dash-unit">hoje</small></span></div>
+    </div>
+    <div class="panel"><h2>Passaram hoje</h2>
+      <table><thead><tr><th>Aluno</th><th>Hora</th><th>Ação</th></tr></thead><tbody id="tb-checkins"></tbody></table>
+    </div>
+  </section>
+
+  <section id="view-financeiro" class="view">
+    <div class="page-head">
+      <div><h1>Financeiro</h1><p class="sub">Gestão de mensalidades</p></div>
+    </div>
+    <div class="cards">
+      <div class="card"><span class="label">Recebido</span><strong id="fin-recebido">R$ 0</strong></div>
+      <div class="card"><span class="label">A receber</span><strong id="fin-areceber">R$ 0</strong></div>
+      <div class="card"><span class="label">Inadimplentes</span><strong id="fin-inad">0</strong></div>
+    </div>
+    <div class="panel nopad"><table>
+      <thead><tr><th>Aluno</th><th>Plano</th><th>Valor</th><th>Situação</th><th>Ação</th></tr></thead>
+      <tbody id="tb-financeiro"></tbody>
+    </table></div>
+  </section>
+
+  <section id="view-anamnese" class="view">
+    <div class="page-head">
+      <div><h1>Anamnese</h1><p class="sub">Coleta de dados alimentares</p></div>
+    </div>
+    <div class="toolbar"><select id="anam-aluno"></select></div>
+    <div class="panel">
+      <div class="row">
+        <label>Objetivo<select id="anam-objetivo"><option>Hipertrofia</option><option>Emagrecimento</option><option>Manutenção</option></select></label>
+        <label>Refeições por dia<input id="anam-refeicoes" type="number" value="4" min="2" max="8"></label>
+      </div>
+      <label>Restrições e alergias<input id="anam-restricoes" placeholder="Ex: lactose, glúten..."></label>
+      <label>Observações<textarea id="anam-obs" rows="3" placeholder="Rotina, horários, preferências..."></textarea></label>
+      <button class="btn" onclick="salvarAnamnese()">Salvar anamnese</button>
+    </div>
+  </section>
+
+  <section id="view-plano" class="view">
+    <div class="page-head">
+      <div><h1>Plano alimentar</h1><p class="sub">Prescrição manual do nutricionista</p></div>
+    </div>
+    <div class="toolbar"><select id="plano-aluno"></select></div>
+    <div class="panel" id="plano-form">
+      <h2>Prescrição do nutricionista</h2>
+      <div id="plano-itens"></div>
+      <button class="btn small ghost" onclick="addRefeicao()">+ Adicionar refeição</button>
+      <label style="margin-top:12px">Orientações<textarea id="plano-orientacoes" rows="3" placeholder="Ex: ajustar proteína pós-treino conforme exame..."></textarea></label>
+      <button class="btn" onclick="salvarPlanoManual()">Salvar plano</button>
+    </div>
+    <div id="plano-result" class="panel"><p class="muted">Escolha o aluno para ver o plano prescrito.</p></div>
+  </section>
+
+  <section id="view-dashaluno" class="view">
+    <div class="page-head">
+      <div><h1>Dashboard do aluno</h1><p class="sub">Acompanhamento, treinos e evolução</p></div>
+    </div>
+    <div class="toolbar"><select id="dash-aluno"></select></div>
+    <div id="dash-aluno-box"></div>
+  </section>
+
+  <section id="view-treinos" class="view">
+    <div class="page-head">
+      <div><h1>Treinos</h1><p class="sub">Planejamento por perfil e objetivo</p></div>
+      <button class="btn" id="btn-novo-treino" onclick="abrirModalTreino()">Novo treino</button>
+    </div>
+    <div class="toolbar">
+      <select id="treino-aluno"></select>
+      <select id="treino-filtro-dia"><option value="">Todos os dias</option><option>Segunda</option><option>Terça</option><option>Quarta</option><option>Quinta</option><option>Sexta</option><option>Sábado</option></select>
+    </div>
+    <div class="chips">
+      <button class="chip" onclick="filtrarDia('')">Todos</button>
+      <button class="chip" onclick="filtrarDia('Segunda')">Seg</button>
+      <button class="chip" onclick="filtrarDia('Terça')">Ter</button>
+      <button class="chip" onclick="filtrarDia('Quarta')">Qua</button>
+      <button class="chip" onclick="filtrarDia('Quinta')">Qui</button>
+      <button class="chip" onclick="filtrarDia('Sexta')">Sex</button>
+      <button class="chip" onclick="filtrarDia('Sábado')">Sáb</button>
+    </div>
+    <div id="treinos-lista"></div>
+  </section>
+
+  <section id="view-exames" class="view">
+    <div class="page-head">
+      <div><h1>Exames</h1><p class="sub">Envio do aluno, análise da nutrição</p></div>
+    </div>
+    <div class="toolbar"><select id="exame-aluno"></select></div>
+    <div class="panel">
+      <h2>Enviar exame</h2>
+      <div class="row">
+        <label>Arquivo (PDF, imagem — até 1,5 MB)<input id="exame-arquivo" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"></label>
+        <label>Observação do aluno<input id="exame-obs" placeholder="Ex: hemograma de rotina, jejum de 12h..."></label>
+      </div>
+      <button class="btn" onclick="uploadExame()">Enviar exame</button>
+      <small class="muted">Arquivo salvo neste navegador (sem servidor). Limite de 1,5 MB por arquivo.</small>
+    </div>
+    <div class="panel nopad"><table>
+      <thead><tr><th>Arquivo</th><th>Aluno</th><th>Data</th><th>Parecer da nutrição</th><th>Ações</th></tr></thead>
+      <tbody id="tb-exames"></tbody>
+    </table></div>
+  </section>
+
+  <section id="view-desafios" class="view">
+    <div class="page-head">
+      <div><h1>Desafios</h1><p class="sub">Metas da academia e dos alunos</p></div>
+      <button class="btn" onclick="abrirModalDesafio()">Novo desafio</button>
+    </div>
+    <div class="toolbar">
+      <select id="desafio-filtro"><option value="">Todos os perfis</option><option>Todos</option><option>Hipertrofia</option><option>Emagrecimento</option><option>Manutenção</option></select>
+    </div>
+    <div id="desafios-lista" class="desafio-grid"></div>
+  </section>
+
+  <section id="view-forum" class="view">
+    <div class="page-head">
+      <div><h1>Fórum</h1><p class="sub">Dúvidas, dicas e desafios da comunidade</p></div>
+      <button class="btn" onclick="abrirModalTopico()">Novo tópico</button>
+    </div>
+    <div id="forum-lista"></div>
+    <div id="forum-detalhe" class="hidden"></div>
+  </section>
+
+</main>
+</div>
+
+<div id="modal-aluno" class="modal"><div class="box">
+  <h2 id="modal-aluno-titulo">Nova matrícula</h2>
+  <input type="hidden" id="f-aluno-id">
+  <label>Nome completo<input id="f-aluno-nome" placeholder="Ex: Ana Souza"></label>
+  <div class="row">
+    <label>Idade<input id="f-aluno-idade" type="number" placeholder="22"></label>
+    <label>Telefone<input id="f-aluno-fone" placeholder="(11) 99999-9999"></label>
+  </div>
+  <div class="row">
+    <label>Plano<select id="f-aluno-plano"><option>Mensal</option><option>Trimestral</option><option>Anual</option></select></label>
+    <label>Status<select id="f-aluno-status"><option>Ativo</option><option>Inativo</option></select></label>
+  </div>
+  <label>Mensalidade<select id="f-aluno-mens"><option>Paga</option><option>Pendente</option></select></label>
+  <div class="actions"><button class="btn ghost" onclick="fecharModalAluno()">Cancelar</button><button class="btn" onclick="salvarAluno()">Salvar</button></div>
+</div></div>
+
+<div id="modal-treino" class="modal"><div class="box">
+  <h2 id="modal-treino-titulo">Novo treino</h2>
+  <input type="hidden" id="f-treino-id">
+  <label>Aluno<select id="f-treino-aluno"></select></label>
+  <div class="row">
+    <label>Tipo<input id="f-treino-tipo" placeholder="Ex: Musculação"></label>
+    <label>Dia<select id="f-treino-dia"><option>Segunda</option><option>Terça</option><option>Quarta</option><option>Quinta</option><option>Sexta</option><option>Sábado</option></select></label>
+  </div>
+  <label>Objetivo do treino<input id="f-treino-objetivo" placeholder="Ex: Hipertrofia — pernas e glúteos"></label>
+  <label>Exercícios (um por linha)<textarea id="f-treino-exercicios" rows="4" placeholder="Supino reto 3x12&#10;Agachamento 4x10&#10;Puxada alta 3x12"></textarea></label>
+  <div class="actions"><button class="btn ghost" onclick="fecharModalTreino()">Cancelar</button><button class="btn" onclick="salvarTreino()">Salvar treino</button></div>
+</div></div>
+
+<div id="modal-desafio" class="modal"><div class="box">
+  <h2>Novo desafio</h2>
+  <label>Título<input id="f-desafio-titulo" placeholder="Ex: 10 treinos no mês"></label>
+  <label>Descrição<textarea id="f-desafio-desc" rows="3" placeholder="Regra, prazo, como comprovar..."></textarea></label>
+  <label>Perfil alvo<select id="f-desafio-perfil"><option>Todos</option><option>Hipertrofia</option><option>Emagrecimento</option><option>Manutenção</option></select></label>
+  <div class="actions"><button class="btn ghost" onclick="fecharModalDesafio()">Cancelar</button><button class="btn" onclick="salvarDesafio()">Publicar desafio</button></div>
+</div></div>
+
+<div id="modal-topico" class="modal"><div class="box">
+  <h2>Novo tópico</h2>
+  <label>Título<input id="f-topico-titulo" placeholder="Ex: Dica de pré-treino barato?"></label>
+  <label>Mensagem<textarea id="f-topico-msg" rows="4" placeholder="Escreva a primeira mensagem do tópico..."></textarea></label>
+  <div class="actions"><button class="btn ghost" onclick="fecharModalTopico()">Cancelar</button><button class="btn" onclick="salvarTopico()">Publicar</button></div>
+</div></div>
+
+<div id="cmdk-overlay" class="cmdk-overlay hidden" onclick="fecharCmdkFundo(event)">
+  <div class="cmdk-box">
+    <input id="cmdk-input" placeholder="Buscar telas e ações..." oninput="filtrarCmdk()" autocomplete="off">
+    <div id="cmdk-list"></div>
+    <div class="cmdk-foot mono">Enter abre · ↑↓ navega · Esc fecha</div>
+  </div>
+</div>
+
+<script src="js/store.js?v=1.1"></script>
+<script src="js/bg3d.js?v=1.1"></script>
+<script src="js/app.js?v=1.1"></script>
+</body>
+</html>
